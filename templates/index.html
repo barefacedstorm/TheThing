@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Wealth & Population Dynamics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <style>
+        :root {
+            --primary: #2a2a2a;
+            --secondary: #3a3a3a;
+            --accent: #00ff88;
+            --text: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--primary);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 2rem 0;
+            border-bottom: 2px solid var(--accent);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            background: linear-gradient(45deg, var(--accent), #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .chart-container {
+            background: var(--secondary);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-height: 70vh;
+        }
+
+        canvas {
+            max-height: 600px;
+            min-height: 400px;
+        }
+
+        .country-list {
+            columns: 2;
+            column-gap: 40px;
+            margin-top: 30px;
+            padding: 20px;
+            background: var(--secondary);
+            border-radius: 15px;
+        }
+
+        .country-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            break-inside: avoid;
+        }
+
+        .country-item span {
+            display: inline-block;
+            margin-left: 10px;
+            color: var(--accent);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Global Wealth & Population Dynamics</h1>
+            <p>Interactive Visualization of World Bank Data</p>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <div class="country-list" id="countryList"></div>
+    </div>
+
+    <script>
+        let myChart;
+
+        async function loadData() {
+            const response = await fetch('/data');
+            const data = await response.json();
+
+            const dataset = Object.keys(data).map(country => ({
+                x: data[country].population,
+                y: data[country].gdp_per_capita,
+                r: Math.sqrt(data[country].gdp) / 90000,
+                country: data[country].country_name,
+                gdp: data[country].gdp
+            })).filter(item => item.x && item.y);
+
+            renderChart(dataset);
+            renderCountryList(dataset);
+        }
+
+        function renderChart(dataset) {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+
+            if(myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Countries',
+                        data: dataset,
+                        backgroundColor: 'rgba(0, 255, 136, 0.3)',
+                        borderColor: 'rgba(0, 255, 136, 0.7)',
+                        borderWidth: 1,
+                        hoverBackgroundColor: 'rgba(147, 112, 219, 0.5)',
+                        hoverBorderColor: 'rgba(147, 112, 219, 1)',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'Population (log scale)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            title: { display: true, text: 'GDP per Capita (USD, log scale)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCountryList(data) {
+            const listContainer = document.getElementById('countryList');
+            const sortedData = data.sort((a, b) => a.country.localeCompare(b.country));
+
+            const listHTML = sortedData.map(item => `
+                <div class="country-item">
+                    ${item.country}
+                    <span>
+                        Pop: ${(item.x / 1000000).toFixed(2)}M /
+                        GDP: $${(item.gdp / 1000000000).toFixed(1)}B
+                    </span>
+                </div>
+            `).join('');
+
+            listContainer.innerHTML = listHTML;
+        }
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
